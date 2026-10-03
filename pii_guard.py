@@ -11,6 +11,11 @@ NG_PHONE_PATTERN = re.compile(
     r"(?!\d)"
 )
 
+ELEVEN_DIGIT_PATTERN = re.compile(r"(?<!\d)\d{11}(?!\d)")
+
+NIN_KEYWORDS = re.compile(r"\b(nin|national identification)\b", re.IGNORECASE)
+BVN_KEYWORDS = re.compile(r"\b(bvn|bank verification)\b", re.IGNORECASE)
+
 
 def find_emails(text):
     return EMAIL_PATTERN.findall(text)
@@ -20,12 +25,37 @@ def find_phones(text):
     return NG_PHONE_PATTERN.findall(text)
 
 
+def find_ids(text):
+    results = []
+
+    for match in ELEVEN_DIGIT_PATTERN.finditer(text):
+        number = match.group()
+        start = match.start()
+
+        nearby_text = text[max(0, start - 40):start]
+        nearby_text = nearby_text.split("\n")[-1]
+
+        if NIN_KEYWORDS.search(nearby_text):
+            results.append(("NIN", number))
+        elif BVN_KEYWORDS.search(nearby_text):
+            results.append(("BVN", number))
+        elif NG_PHONE_PATTERN.fullmatch(number):
+            continue
+        else:
+            results.append(("Possible ID", number))
+
+    return results
+
+
 def scan_file(file_path):
     with open(file_path, "r", encoding="utf-8") as file:
         text = file.read()
 
     emails = find_emails(text)
-    phones = find_phones(text)
+    ids = find_ids(text)
+
+    id_numbers = [number for label, number in ids]
+    phones = [phone for phone in find_phones(text) if phone not in id_numbers]
 
     print(f"Scanning: {file_path}")
 
@@ -37,11 +67,19 @@ def scan_file(file_path):
     for phone in phones:
         print(f"    - {phone}")
 
+    print(f"  ID numbers found: {len(ids)}")
+    for label, number in ids:
+        print(f"    - {label}: {number}")
+
     print()
 
 
 def main():
-    files_to_scan = ["samples/sample1.txt", "samples/sample2.txt"]
+    files_to_scan = [
+        "samples/sample1.txt",
+        "samples/sample2.txt",
+        "samples/sample3.txt",
+    ]
 
     for file_path in files_to_scan:
         scan_file(file_path)

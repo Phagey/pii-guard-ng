@@ -1,0 +1,14 @@
+Staff onboarding records - TEST DATA ONLY (all details are fake)
+
+Employee: Ngozi Okafor
+NIN: 12345678901
+BVN: 22000000001
+Phone: 08100000004
+
+Employee: Bello Sani
+National Identification Number 70000000002
+Bank Verification Number: 22000000003
+Old NIN on file: 08000000005
+
+Payroll note: reference 55500000009 was used for the March run.
+Evening shift code: 33300000007

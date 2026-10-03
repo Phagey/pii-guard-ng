@@ -1,0 +1,12 @@
+Customer feedback export - TEST DATA ONLY (all details are fake)
+
+Name: Tunde Bakare
+Email: tunde.bakare@example.com
+Comment: Please call me back about my order.
+
+Name: Chiamaka Obi
+Email: c.obi99@example.org
+Comment: Send the invoice to accounts@example.net as well.
+
+Name: Musa Ibrahim
+Comment: I don't want to share my email.

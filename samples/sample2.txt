@@ -1,0 +1,7 @@
+Support tickets - TEST DATA ONLY (all details are fake)
+
+Ticket 1: Customer Ada Eze called from 0803 000 0001 about a refund.
+Ticket 2: Please reach Femi on +234 805 000 0002 or femi.ade@example.com.
+Ticket 3: Alternate line 09010000003 (no spaces).
+Ticket 4: Order number 2340801000000456 - this is not a phone number.
+Ticket 5: Short reference 0803000 - this is not a phone number.

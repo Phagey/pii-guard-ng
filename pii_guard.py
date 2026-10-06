@@ -158,6 +158,29 @@ def find_files(folder):
     return found
 
 
+def mask_email(email):
+    name, domain = email.split("@", 1)
+    return name[0] + "***@" + domain
+
+
+def mask_number(value):
+    digits = re.sub(r"\D", "", value)
+    return "*" * (len(digits) - 4) + digits[-4:]
+
+
+def get_risk_level(emails, phones, ids, cards):
+    has_high_risk_id = any(label != "Possible ID" for label, number in ids)
+
+    if cards or has_high_risk_id:
+        return "High"
+    elif phones or ids:
+        return "Medium"
+    elif emails:
+        return "Low"
+    else:
+        return "Clean"
+
+
 def scan_file(file_path):
     if file_path.suffix.lower() == ".csv":
         text = read_csv_file(file_path)
@@ -171,25 +194,30 @@ def scan_file(file_path):
     id_numbers = [number for label, number in ids]
     phones = [phone for phone in find_phones(text) if phone not in id_numbers]
 
+    risk = get_risk_level(emails, phones, ids, cards)
+
     print(f"Scanning: {file_path}")
+    print(f"  Risk level: {risk.upper()}")
 
     print(f"  Emails found: {len(emails)}")
     for email in emails:
-        print(f"    - {email}")
+        print(f"    - {mask_email(email)}")
 
     print(f"  Phone numbers found: {len(phones)}")
     for phone in phones:
-        print(f"    - {phone}")
+        print(f"    - {mask_number(phone)}")
 
     print(f"  ID numbers found: {len(ids)}")
     for label, number in ids:
-        print(f"    - {label}: {number}")
+        print(f"    - {label}: {mask_number(number)}")
 
     print(f"  Card numbers found: {len(cards)}")
     for card in cards:
-        print(f"    - {card}")
+        print(f"    - {mask_number(card)}")
 
     print()
+
+    return risk
 
 
 def main():
@@ -211,8 +239,17 @@ def main():
     print(f"Found {len(files)} file(s) to scan in: {folder}")
     print()
 
+    risk_counts = {"High": 0, "Medium": 0, "Low": 0, "Clean": 0}
+
     for file_path in files:
-        scan_file(file_path)
+        risk = scan_file(file_path)
+        risk_counts[risk] = risk_counts[risk] + 1
+
+    print("Summary")
+    print(f"  Files scanned: {len(files)}")
+    print("  Files by risk level:")
+    for level, count in risk_counts.items():
+        print(f"    {level}: {count}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,10 @@
+Payment records - TEST DATA ONLY (all card numbers are public test numbers or made up)
+
+Customer A paid with card 4111 1111 1111 1111 on 2 October.
+Customer B paid with card 5500-0000-0000-0004.
+Customer C card on file: 4012888888881881
+Customer D used a Verve-style card: 5061 0000 0000 0000 007
+
+Typo in record: 4111 1111 1111 1112 - this fails the Luhn check.
+Invoice number 1234567812345678 - this is not a card number.
+Customer E phone: +234 805 000 0002

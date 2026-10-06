@@ -13,11 +13,11 @@ Status key: ✅ built, 🔜 planned for Week 2.
 flowchart TD
     A[Folder to scan] --> B[Find all .txt and .csv files]
     B --> C[Read each file line by line]
-    C --> D[Detectors: email, phone, card, 11-digit IDs]
-    D --> E[Validators: context words, Luhn, Verhoeff]
+    C --> D[Detectors:<br/>email, phone, card, 11-digit IDs]
+    D --> E[Validators:<br/>context words, Luhn, Verhoeff]
     E --> F[Mask each finding]
     F --> G[Give each file a risk level]
-    G --> H[Show summary on screen and save CSV report]
+    G --> H[Show summary on screen<br/>and save CSV report]
 ```
 
 ## 2. Components

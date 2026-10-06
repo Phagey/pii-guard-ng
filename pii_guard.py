@@ -16,6 +16,8 @@ ELEVEN_DIGIT_PATTERN = re.compile(r"(?<!\d)\d{11}(?!\d)")
 NIN_KEYWORDS = re.compile(r"\b(nin|national identification)\b", re.IGNORECASE)
 BVN_KEYWORDS = re.compile(r"\b(bvn|bank verification)\b", re.IGNORECASE)
 
+CARD_PATTERN = re.compile(r"(?<!\d)(?:\d[ -]?){12,18}\d(?!\d)")
+
 
 def find_emails(text):
     return EMAIL_PATTERN.findall(text)
@@ -23,6 +25,37 @@ def find_emails(text):
 
 def find_phones(text):
     return NG_PHONE_PATTERN.findall(text)
+
+
+def luhn_valid(number):
+    total = 0
+
+    for position, digit in enumerate(number[::-1]):
+        n = int(digit)
+        if position % 2 == 1:
+            n = n * 2
+            if n > 9:
+                n = n - 9
+        total = total + n
+
+    return total % 10 == 0
+
+
+def find_cards(text):
+    results = []
+
+    for match in CARD_PATTERN.finditer(text):
+        candidate = match.group()
+
+        if NG_PHONE_PATTERN.fullmatch(candidate):
+            continue
+
+        digits_only = re.sub(r"[ -]", "", candidate)
+
+        if luhn_valid(digits_only):
+            results.append(candidate)
+
+    return results
 
 
 def find_ids(text):
@@ -53,6 +86,7 @@ def scan_file(file_path):
 
     emails = find_emails(text)
     ids = find_ids(text)
+    cards = find_cards(text)
 
     id_numbers = [number for label, number in ids]
     phones = [phone for phone in find_phones(text) if phone not in id_numbers]
@@ -71,6 +105,10 @@ def scan_file(file_path):
     for label, number in ids:
         print(f"    - {label}: {number}")
 
+    print(f"  Card numbers found: {len(cards)}")
+    for card in cards:
+        print(f"    - {card}")
+
     print()
 
 
@@ -79,6 +117,7 @@ def main():
         "samples/sample1.txt",
         "samples/sample2.txt",
         "samples/sample3.txt",
+        "samples/sample4.txt",
     ]
 
     for file_path in files_to_scan:

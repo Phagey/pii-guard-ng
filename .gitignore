@@ -218,3 +218,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# Scan results (may reveal which files contain sensitive data)
+reports/

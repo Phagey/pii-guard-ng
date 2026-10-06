@@ -48,12 +48,26 @@ VERHOEFF_PERMUTE = [
 ]
 
 
+def line_number(text, position):
+    return text.count("\n", 0, position) + 1
+
+
 def find_emails(text):
-    return EMAIL_PATTERN.findall(text)
+    results = []
+
+    for match in EMAIL_PATTERN.finditer(text):
+        results.append(("Email", match.group(), line_number(text, match.start())))
+
+    return results
 
 
 def find_phones(text):
-    return NG_PHONE_PATTERN.findall(text)
+    results = []
+
+    for match in NG_PHONE_PATTERN.finditer(text):
+        results.append(("Phone", match.group(), line_number(text, match.start())))
+
+    return results
 
 
 def luhn_valid(number):
@@ -92,7 +106,7 @@ def find_cards(text):
         digits_only = re.sub(r"[ -]", "", candidate)
 
         if luhn_valid(digits_only):
-            results.append(candidate)
+            results.append(("Card", candidate, line_number(text, match.start())))
 
     return results
 
@@ -103,6 +117,7 @@ def find_ids(text):
     for match in ELEVEN_DIGIT_PATTERN.finditer(text):
         number = match.group()
         start = match.start()
+        line = line_number(text, start)
 
         nearby_text = text[max(0, start - 40):start]
         nearby_text = nearby_text.split("\n")[-1]
@@ -110,15 +125,15 @@ def find_ids(text):
 
         if NIN_KEYWORDS.search(nearby_text):
             if verhoeff_valid(number):
-                results.append(("NIN", number))
+                results.append(("NIN", number, line))
             else:
-                results.append(("NIN (checksum failed)", number))
+                results.append(("NIN (checksum failed)", number, line))
         elif BVN_KEYWORDS.search(nearby_text):
-            results.append(("BVN", number))
+            results.append(("BVN", number, line))
         elif NG_PHONE_PATTERN.fullmatch(number):
             continue
         else:
-            results.append(("Possible ID", number))
+            results.append(("Possible ID", number, line))
 
     return results
 
@@ -168,8 +183,15 @@ def mask_number(value):
     return "*" * (len(digits) - 4) + digits[-4:]
 
 
+def mask_value(data_type, value):
+    if data_type == "Email":
+        return mask_email(value)
+    else:
+        return mask_number(value)
+
+
 def get_risk_level(emails, phones, ids, cards):
-    has_high_risk_id = any(label != "Possible ID" for label, number in ids)
+    has_high_risk_id = any(label != "Possible ID" for label, number, line in ids)
 
     if cards or has_high_risk_id:
         return "High"
@@ -179,6 +201,12 @@ def get_risk_level(emails, phones, ids, cards):
         return "Low"
     else:
         return "Clean"
+
+
+def print_findings(title, findings):
+    print(f"  {title} found: {len(findings)}")
+    for data_type, value, line in findings:
+        print(f"    - {data_type}: {mask_value(data_type, value)} (line {line})")
 
 
 def scan_file(file_path):
@@ -191,33 +219,44 @@ def scan_file(file_path):
     ids = find_ids(text)
     cards = find_cards(text)
 
-    id_numbers = [number for label, number in ids]
-    phones = [phone for phone in find_phones(text) if phone not in id_numbers]
+    id_numbers = [number for label, number, line in ids]
+    phones = [
+        (data_type, value, line)
+        for data_type, value, line in find_phones(text)
+        if value not in id_numbers
+    ]
 
     risk = get_risk_level(emails, phones, ids, cards)
 
     print(f"Scanning: {file_path}")
     print(f"  Risk level: {risk.upper()}")
 
-    print(f"  Emails found: {len(emails)}")
-    for email in emails:
-        print(f"    - {mask_email(email)}")
-
-    print(f"  Phone numbers found: {len(phones)}")
-    for phone in phones:
-        print(f"    - {mask_number(phone)}")
-
-    print(f"  ID numbers found: {len(ids)}")
-    for label, number in ids:
-        print(f"    - {label}: {mask_number(number)}")
-
-    print(f"  Card numbers found: {len(cards)}")
-    for card in cards:
-        print(f"    - {mask_number(card)}")
+    print_findings("Emails", emails)
+    print_findings("Phone numbers", phones)
+    print_findings("ID numbers", ids)
+    print_findings("Card numbers", cards)
 
     print()
 
-    return risk
+    report_rows = []
+    for data_type, value, line in emails + phones + ids + cards:
+        masked = mask_value(data_type, value)
+        report_rows.append([str(file_path), line, data_type, masked, risk])
+
+    return risk, report_rows
+
+
+def write_report(rows):
+    report_folder = Path("reports")
+    report_folder.mkdir(exist_ok=True)
+    report_path = report_folder / "report.csv"
+
+    with open(report_path, "w", encoding="utf-8", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["file", "line", "data_type", "masked_value", "file_risk"])
+        writer.writerows(rows)
+
+    return report_path
 
 
 def main():
@@ -240,16 +279,23 @@ def main():
     print()
 
     risk_counts = {"High": 0, "Medium": 0, "Low": 0, "Clean": 0}
+    all_rows = []
 
     for file_path in files:
-        risk = scan_file(file_path)
+        risk, report_rows = scan_file(file_path)
         risk_counts[risk] = risk_counts[risk] + 1
+        all_rows.extend(report_rows)
 
     print("Summary")
     print(f"  Files scanned: {len(files)}")
+    print(f"  Items found: {len(all_rows)}")
     print("  Files by risk level:")
     for level, count in risk_counts.items():
         print(f"    {level}: {count}")
+
+    report_path = write_report(all_rows)
+    print()
+    print(f"Report saved to: {report_path}")
 
 
 if __name__ == "__main__":

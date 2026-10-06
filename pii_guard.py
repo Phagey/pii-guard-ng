@@ -18,6 +18,30 @@ BVN_KEYWORDS = re.compile(r"\b(bvn|bank verification)\b", re.IGNORECASE)
 
 CARD_PATTERN = re.compile(r"(?<!\d)(?:\d[ -]?){12,18}\d(?!\d)")
 
+VERHOEFF_MULTIPLY = [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    [1, 2, 3, 4, 0, 6, 7, 8, 9, 5],
+    [2, 3, 4, 0, 1, 7, 8, 9, 5, 6],
+    [3, 4, 0, 1, 2, 8, 9, 5, 6, 7],
+    [4, 0, 1, 2, 3, 9, 5, 6, 7, 8],
+    [5, 9, 8, 7, 6, 0, 4, 3, 2, 1],
+    [6, 5, 9, 8, 7, 1, 0, 4, 3, 2],
+    [7, 6, 5, 9, 8, 2, 1, 0, 4, 3],
+    [8, 7, 6, 5, 9, 3, 2, 1, 0, 4],
+    [9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+]
+
+VERHOEFF_PERMUTE = [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    [1, 5, 7, 6, 2, 8, 3, 0, 9, 4],
+    [5, 8, 0, 3, 7, 9, 6, 1, 4, 2],
+    [8, 9, 1, 6, 0, 4, 3, 5, 2, 7],
+    [9, 4, 5, 3, 1, 2, 7, 6, 8, 0],
+    [4, 2, 8, 6, 5, 7, 3, 9, 0, 1],
+    [2, 7, 9, 3, 8, 0, 6, 4, 1, 5],
+    [7, 0, 4, 6, 9, 1, 3, 2, 5, 8],
+]
+
 
 def find_emails(text):
     return EMAIL_PATTERN.findall(text)
@@ -39,6 +63,16 @@ def luhn_valid(number):
         total = total + n
 
     return total % 10 == 0
+
+
+def verhoeff_valid(number):
+    check = 0
+
+    for position, digit in enumerate(number[::-1]):
+        row = VERHOEFF_PERMUTE[position % 8]
+        check = VERHOEFF_MULTIPLY[check][row[int(digit)]]
+
+    return check == 0
 
 
 def find_cards(text):
@@ -69,7 +103,10 @@ def find_ids(text):
         nearby_text = nearby_text.split("\n")[-1]
 
         if NIN_KEYWORDS.search(nearby_text):
-            results.append(("NIN", number))
+            if verhoeff_valid(number):
+                results.append(("NIN", number))
+            else:
+                results.append(("NIN (checksum failed)", number))
         elif BVN_KEYWORDS.search(nearby_text):
             results.append(("BVN", number))
         elif NG_PHONE_PATTERN.fullmatch(number):

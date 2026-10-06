@@ -1,4 +1,7 @@
+import csv
 import re
+import sys
+from pathlib import Path
 
 EMAIL_PATTERN = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 
@@ -15,6 +18,8 @@ ELEVEN_DIGIT_PATTERN = re.compile(r"(?<!\d)\d{11}(?!\d)")
 
 NIN_KEYWORDS = re.compile(r"\b(nin|national identification)\b", re.IGNORECASE)
 BVN_KEYWORDS = re.compile(r"\b(bvn|bank verification)\b", re.IGNORECASE)
+
+SUPPORTED_EXTENSIONS = {".txt", ".csv"}
 
 CARD_PATTERN = re.compile(r"(?<!\d)(?:\d[ -]?){12,18}\d(?!\d)")
 
@@ -101,6 +106,7 @@ def find_ids(text):
 
         nearby_text = text[max(0, start - 40):start]
         nearby_text = nearby_text.split("\n")[-1]
+        nearby_text = nearby_text.split("|")[-1]
 
         if NIN_KEYWORDS.search(nearby_text):
             if verhoeff_valid(number):
@@ -117,9 +123,46 @@ def find_ids(text):
     return results
 
 
+def read_text_file(file_path):
+    with open(file_path, "r", encoding="utf-8", errors="replace") as file:
+        return file.read()
+
+
+def read_csv_file(file_path):
+    with open(file_path, "r", encoding="utf-8-sig", errors="replace", newline="") as file:
+        rows = list(csv.reader(file))
+
+    if not rows:
+        return ""
+
+    headers = [header.replace("_", " ") for header in rows[0]]
+    lines = [", ".join(rows[0])]
+
+    for row in rows[1:]:
+        cells = [f"{header}: {value}" for header, value in zip(headers, row)]
+        lines.append(" | ".join(cells))
+
+    return "\n".join(lines)
+
+
+def find_files(folder):
+    found = []
+
+    for path in sorted(Path(folder).rglob("*")):
+        relative_parts = path.relative_to(folder).parts
+        if any(part.startswith(".") for part in relative_parts):
+            continue
+        if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS:
+            found.append(path)
+
+    return found
+
+
 def scan_file(file_path):
-    with open(file_path, "r", encoding="utf-8") as file:
-        text = file.read()
+    if file_path.suffix.lower() == ".csv":
+        text = read_csv_file(file_path)
+    else:
+        text = read_text_file(file_path)
 
     emails = find_emails(text)
     ids = find_ids(text)
@@ -150,14 +193,25 @@ def scan_file(file_path):
 
 
 def main():
-    files_to_scan = [
-        "samples/sample1.txt",
-        "samples/sample2.txt",
-        "samples/sample3.txt",
-        "samples/sample4.txt",
-    ]
+    if len(sys.argv) > 1:
+        folder = sys.argv[1]
+    else:
+        folder = "samples"
 
-    for file_path in files_to_scan:
+    if not Path(folder).is_dir():
+        print(f"Folder not found: {folder}")
+        return
+
+    files = find_files(folder)
+
+    if not files:
+        print(f"No .txt or .csv files found in: {folder}")
+        return
+
+    print(f"Found {len(files)} file(s) to scan in: {folder}")
+    print()
+
+    for file_path in files:
         scan_file(file_path)
 
 

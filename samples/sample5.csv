@@ -1,0 +1,4 @@
+full_name,email,phone,nin,bvn,card_number,notes
+Ada Eze,ada.eze@example.com,0803 000 0006,12345678904,22000000001,4111 1111 1111 1111,TEST DATA ONLY
+Tunde Bakare,tunde@example.org,+234 805 000 0007,70000000004,22000000003,5500-0000-0000-0004,fake record
+Musa Ibrahim,,,12345678901,,1234567812345678,checksum tests

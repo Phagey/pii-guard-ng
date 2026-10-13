@@ -7,10 +7,10 @@ EMAIL_PATTERN = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 
 NG_PHONE_PATTERN = re.compile(
     r"(?<!\d)"
-    r"(?:\+234[ -]?|234[ -]?|0)"
+    r"(?:\+234[ .-]?|234[ .-]?|\(0|0)"
     r"[789][01]\d"
-    r"[ -]?\d{3}"
-    r"[ -]?\d{4}"
+    r"\)?[ .-]?\d{3}"
+    r"[ .-]?\d{4}"
     r"(?!\d)"
 )
 
@@ -111,6 +111,19 @@ def find_cards(text):
     return results
 
 
+def label_on_line_above(text, position):
+    line_start = text.rfind("\n", 0, position) + 1
+    if line_start == 0:
+        return ""
+
+    previous_start = text.rfind("\n", 0, line_start - 1) + 1
+    previous_line = text[previous_start:line_start - 1]
+
+    if re.search(r"\d", previous_line):
+        return ""
+    return previous_line
+
+
 def find_ids(text):
     results = []
 
@@ -122,6 +135,9 @@ def find_ids(text):
         nearby_text = text[max(0, start - 40):start]
         nearby_text = nearby_text.split("\n")[-1]
         nearby_text = nearby_text.split("|")[-1]
+
+        if nearby_text.strip() == "":
+            nearby_text = label_on_line_above(text, start)
 
         if NIN_KEYWORDS.search(nearby_text):
             if verhoeff_valid(number):
@@ -276,3 +292,36 @@ def main():
 
     if not Path(folder).is_dir():
         print(f"Folder not found: {folder}")
+        return
+
+    files = find_files(folder)
+
+    if not files:
+        print(f"No .txt or .csv files found in: {folder}")
+        return
+
+    print(f"Found {len(files)} file(s) to scan in: {folder}")
+    print()
+
+    risk_counts = {"High": 0, "Medium": 0, "Low": 0, "Clean": 0}
+    all_rows = []
+
+    for file_path in files:
+        risk, report_rows = scan_file(file_path)
+        risk_counts[risk] = risk_counts[risk] + 1
+        all_rows.extend(report_rows)
+
+    print("Summary")
+    print(f"  Files scanned: {len(files)}")
+    print(f"  Items found: {len(all_rows)}")
+    print("  Files by risk level:")
+    for level, count in risk_counts.items():
+        print(f"    {level}: {count}")
+
+    report_path = write_report(all_rows)
+    print()
+    print(f"Report saved to: {report_path}")
+
+
+if __name__ == "__main__":
+    main()

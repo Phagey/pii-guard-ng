@@ -1,3 +1,5 @@
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -58,6 +60,14 @@ class TestPhones(unittest.TestCase):
     def test_ignores_short_number(self):
         self.assertEqual(pii_guard.find_phones("Ref 0803000"), [])
 
+    def test_finds_bracket_and_dot_formats(self):
+        text = "(0803) 123 4567 and 0805.123.4567"
+        found = pii_guard.find_phones(text)
+        self.assertEqual(values(found), ["(0803) 123 4567", "0805.123.4567"])
+
+    def test_ignores_dates_and_amounts(self):
+        self.assertEqual(pii_guard.find_phones("Paid NGN 150,000.00 on 13.10.2026"), [])
+
 
 class TestIds(unittest.TestCase):
     def test_nin_and_bvn_labels(self):
@@ -74,6 +84,14 @@ class TestIds(unittest.TestCase):
 
     def test_unlabelled_phone_is_not_an_id(self):
         self.assertEqual(pii_guard.find_ids("Phone: 08100000004"), [])
+
+    def test_label_on_line_above(self):
+        found = pii_guard.find_ids("NIN:\n12345678904")
+        self.assertEqual(labels(found), ["NIN"])
+
+    def test_line_above_with_numbers_is_not_a_label(self):
+        found = pii_guard.find_ids("NIN: 12345678904\n55500000009")
+        self.assertEqual(labels(found), ["NIN", "Possible ID"])
 
     def test_line_numbers(self):
         found = pii_guard.find_ids("Title\n\nNIN: 12345678904")
@@ -137,6 +155,17 @@ class TestFiles(unittest.TestCase):
             (Path(folder) / ".hidden" / "d.txt").write_text("x", encoding="utf-8")
             names = [path.name for path in pii_guard.find_files(folder)]
         self.assertEqual(names, ["a.txt", "b.csv"])
+
+
+class TestCommandLine(unittest.TestCase):
+    def test_scanner_runs_on_samples(self):
+        result = subprocess.run(
+            [sys.executable, "pii_guard.py", "samples"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertIn("Files scanned: 6", result.stdout)
+        self.assertIn("Items found: 32", result.stdout)
 
 
 if __name__ == "__main__":

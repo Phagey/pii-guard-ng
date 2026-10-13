@@ -222,3 +222,6 @@ __marimo__/
 
 # Scan results (may reveal which files contain sensitive data)
 reports/
+
+# Generated evaluation dataset (recreate with: python evaluate.py)
+eval_data/

@@ -209,12 +209,14 @@ def print_findings(title, findings):
         print(f"    - {data_type}: {mask_value(data_type, value)} (line {line})")
 
 
-def scan_file(file_path):
+def read_file(file_path):
     if file_path.suffix.lower() == ".csv":
-        text = read_csv_file(file_path)
+        return read_csv_file(file_path)
     else:
-        text = read_text_file(file_path)
+        return read_text_file(file_path)
 
+
+def analyze_text(text):
     emails = find_emails(text)
     ids = find_ids(text)
     cards = find_cards(text)
@@ -225,6 +227,13 @@ def scan_file(file_path):
         for data_type, value, line in find_phones(text)
         if value not in id_numbers
     ]
+
+    return emails, phones, ids, cards
+
+
+def scan_file(file_path):
+    text = read_file(file_path)
+    emails, phones, ids, cards = analyze_text(text)
 
     risk = get_risk_level(emails, phones, ids, cards)
 
@@ -267,36 +276,3 @@ def main():
 
     if not Path(folder).is_dir():
         print(f"Folder not found: {folder}")
-        return
-
-    files = find_files(folder)
-
-    if not files:
-        print(f"No .txt or .csv files found in: {folder}")
-        return
-
-    print(f"Found {len(files)} file(s) to scan in: {folder}")
-    print()
-
-    risk_counts = {"High": 0, "Medium": 0, "Low": 0, "Clean": 0}
-    all_rows = []
-
-    for file_path in files:
-        risk, report_rows = scan_file(file_path)
-        risk_counts[risk] = risk_counts[risk] + 1
-        all_rows.extend(report_rows)
-
-    print("Summary")
-    print(f"  Files scanned: {len(files)}")
-    print(f"  Items found: {len(all_rows)}")
-    print("  Files by risk level:")
-    for level, count in risk_counts.items():
-        print(f"    {level}: {count}")
-
-    report_path = write_report(all_rows)
-    print()
-    print(f"Report saved to: {report_path}")
-
-
-if __name__ == "__main__":
-    main()

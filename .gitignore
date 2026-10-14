@@ -225,3 +225,6 @@ reports/
 
 # Generated evaluation dataset (recreate with: python evaluate.py)
 eval_data/
+
+# Generated benchmark data (recreate with: python benchmark.py)
+bench_data/

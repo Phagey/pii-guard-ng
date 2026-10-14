@@ -1,3 +1,4 @@
+import bisect
 import csv
 import re
 import sys
@@ -48,24 +49,33 @@ VERHOEFF_PERMUTE = [
 ]
 
 
-def line_number(text, position):
-    return text.count("\n", 0, position) + 1
+def line_starts(text):
+    starts = [0]
+    for match in re.finditer("\n", text):
+        starts.append(match.end())
+    return starts
+
+
+def line_number(starts, position):
+    return bisect.bisect_right(starts, position)
 
 
 def find_emails(text):
+    starts = line_starts(text)
     results = []
 
     for match in EMAIL_PATTERN.finditer(text):
-        results.append(("Email", match.group(), line_number(text, match.start())))
+        results.append(("Email", match.group(), line_number(starts, match.start())))
 
     return results
 
 
 def find_phones(text):
+    starts = line_starts(text)
     results = []
 
     for match in NG_PHONE_PATTERN.finditer(text):
-        results.append(("Phone", match.group(), line_number(text, match.start())))
+        results.append(("Phone", match.group(), line_number(starts, match.start())))
 
     return results
 
@@ -95,6 +105,7 @@ def verhoeff_valid(number):
 
 
 def find_cards(text):
+    starts = line_starts(text)
     results = []
 
     for match in CARD_PATTERN.finditer(text):
@@ -106,7 +117,7 @@ def find_cards(text):
         digits_only = re.sub(r"[ -]", "", candidate)
 
         if luhn_valid(digits_only):
-            results.append(("Card", candidate, line_number(text, match.start())))
+            results.append(("Card", candidate, line_number(starts, match.start())))
 
     return results
 
@@ -125,12 +136,13 @@ def label_on_line_above(text, position):
 
 
 def find_ids(text):
+    starts = line_starts(text)
     results = []
 
     for match in ELEVEN_DIGIT_PATTERN.finditer(text):
         number = match.group()
         start = match.start()
-        line = line_number(text, start)
+        line = line_number(starts, start)
 
         nearby_text = text[max(0, start - 40):start]
         nearby_text = nearby_text.split("\n")[-1]
@@ -237,7 +249,7 @@ def analyze_text(text):
     ids = find_ids(text)
     cards = find_cards(text)
 
-    id_numbers = [number for label, number, line in ids]
+    id_numbers = {number for label, number, line in ids}
     phones = [
         (data_type, value, line)
         for data_type, value, line in find_phones(text)

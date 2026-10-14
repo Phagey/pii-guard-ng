@@ -15,6 +15,17 @@ def labels(findings):
     return [data_type for data_type, value, line in findings]
 
 
+class TestLineNumbers(unittest.TestCase):
+    def test_line_starts(self):
+        self.assertEqual(pii_guard.line_starts("ab\ncd\nef"), [0, 3, 6])
+
+    def test_line_number_for_each_line(self):
+        starts = pii_guard.line_starts("ab\ncd\nef")
+        self.assertEqual(pii_guard.line_number(starts, 0), 1)
+        self.assertEqual(pii_guard.line_number(starts, 4), 2)
+        self.assertEqual(pii_guard.line_number(starts, 7), 3)
+
+
 class TestLuhn(unittest.TestCase):
     def test_valid_test_cards_pass(self):
         for number in ["4111111111111111", "5500000000000004", "4012888888881881"]:
